@@ -1,0 +1,1156 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Social anxiety tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Newsreader:ital,opsz,wght@0,6..72,500;0,6..72,600;1,6..72,500&display=swap" rel="stylesheet">
+<style>
+:root {
+  /* Layout: one calm phone-first column (max 680px), sticky tab bar, cards by role; the fear ladder is the one bold element. */
+  --bg: #F1F2F6;
+  --surface: #FFFFFF;
+  --ink: #1B1E2B;
+  --muted: #5A6073;
+  --accent: #3843A8;
+  --good: #2F7A4F;
+  --warn: #9A5F0E;
+  --line: color-mix(in srgb, var(--ink) 13%, var(--surface));
+  --rail: color-mix(in srgb, var(--ink) 22%, var(--bg));
+  --accent-soft: color-mix(in srgb, var(--accent) 12%, var(--surface));
+  --good-soft: color-mix(in srgb, var(--good) 14%, var(--surface));
+  --warn-soft: color-mix(in srgb, var(--warn) 14%, var(--surface));
+  --on-accent: var(--surface);
+  --display: "Newsreader", Georgia, "Times New Roman", serif;
+  --body: "Atkinson Hyperlegible", -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #10121A;
+    --surface: #191C27;
+    --ink: #E7E9F2;
+    --muted: #A3A8BC;
+    --accent: #9AA4FF;
+    --good: #6FCB94;
+    --warn: #E6AE5C;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #10121A;
+  --surface: #191C27;
+  --ink: #E7E9F2;
+  --muted: #A3A8BC;
+  --accent: #9AA4FF;
+  --good: #6FCB94;
+  --warn: #E6AE5C;
+  color-scheme: dark;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.5 var(--body); }
+h1, h2, h3 { font-family: var(--display); font-weight: 600; line-height: 1.15; margin: 0; text-wrap: balance; letter-spacing: -0.01em; }
+h1 { font-size: 22px; }
+h2 { font-size: 30px; }
+h3 { font-size: 21px; }
+h4 { font-size: 16px; font-weight: 700; margin: 18px 0 0; }
+p { margin: 0; }
+a { color: var(--accent); }
+.sr { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+.muted { color: var(--muted); }
+.small { font-size: 14px; }
+:focus-visible { outline: 3px solid color-mix(in srgb, var(--accent) 60%, transparent); outline-offset: 2px; }
+
+.app { max-width: 680px; margin: 0 auto; padding: 0 16px 56px; }
+.top { position: sticky; top: 0; z-index: 10; background: var(--bg); padding: 14px 0 12px; }
+.brand { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.status { font-size: 13px; color: var(--muted); white-space: nowrap; display: flex; gap: 6px; align-items: baseline; }
+.status button { font: inherit; font-weight: 700; color: var(--accent); background: none; border: 0; padding: 0; cursor: pointer; text-decoration: underline; }
+.tabs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; margin-top: 12px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 4px; }
+.tab { display: block; text-align: center; padding: 8px 4px; border-radius: 9px; color: var(--muted); text-decoration: none; font-weight: 700; font-size: 15px; }
+.tab[aria-current="page"] { background: var(--accent); color: var(--on-accent); }
+main { padding-top: 8px; }
+
+.stack { display: grid; gap: 16px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 16px; }
+.eyebrow { font-size: 13px; color: var(--muted); font-weight: 700; letter-spacing: 0.02em; }
+.row-between { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.btn-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 14px; }
+.lead { margin-top: 6px; }
+
+.btn { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 10px 16px; border-radius: 11px; border: 1px solid var(--accent); background: var(--accent); color: var(--on-accent); font: inherit; font-weight: 700; cursor: pointer; text-decoration: none; }
+.btn-quiet { background: transparent; color: var(--accent); border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); }
+.btn-danger { background: transparent; color: var(--warn); border-color: var(--warn); }
+.btn:disabled, .toggle:disabled, .chip:disabled { opacity: 0.5; cursor: not-allowed; }
+.icon-btn { border: 0; background: none; color: var(--muted); font-size: 20px; line-height: 1; padding: 4px 8px; cursor: pointer; border-radius: 8px; }
+
+/* Today */
+.toggles { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 14px; }
+.toggle { display: flex; align-items: center; gap: 10px; min-height: 54px; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); font: inherit; font-weight: 700; font-size: 15px; text-align: left; cursor: pointer; }
+.toggle .tick { width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--rail); flex: none; display: grid; place-items: center; }
+.toggle[aria-pressed="true"] { background: var(--good-soft); border-color: var(--good); }
+.toggle[aria-pressed="true"] .tick { background: var(--good); border-color: var(--good); }
+.toggle[aria-pressed="true"] .tick::after { content: ""; width: 6px; height: 11px; border: solid var(--surface); border-width: 0 2.5px 2.5px 0; transform: translateY(-1px) rotate(45deg); }
+.streak-top { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.big { font-family: var(--display); font-size: 56px; line-height: 1; font-variant-numeric: tabular-nums; }
+.dots { display: grid; grid-template-columns: repeat(14, 1fr); gap: 6px; list-style: none; padding: 0; margin: 16px 0 4px; }
+.dot { aspect-ratio: 1; border-radius: 50%; border: 2px solid var(--rail); }
+.dot.on { background: var(--good); border-color: var(--good); }
+.dot.today { outline: 2px solid var(--accent); outline-offset: 2px; }
+.dots-legend { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); }
+.weekline { margin-top: 16px; }
+.stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 6px; }
+.stat { background: var(--bg); border-radius: 10px; padding: 8px 10px; display: grid; gap: 2px; }
+.stat b { font-family: var(--display); font-size: 24px; line-height: 1.1; font-weight: 600; font-variant-numeric: tabular-nums; }
+.stat b small { font-family: var(--body); font-size: 13px; font-weight: 400; color: var(--muted); }
+.stat > span { font-size: 13px; color: var(--muted); line-height: 1.3; }
+.actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+
+.breathe-row { display: grid; grid-template-columns: auto 1fr; gap: 18px; align-items: center; }
+.ring { width: 96px; height: 96px; border-radius: 50%; border: 2px solid color-mix(in srgb, var(--accent) 35%, var(--line)); display: grid; place-items: center; }
+.core { width: 86px; height: 86px; border-radius: 50%; background: color-mix(in srgb, var(--accent) 20%, var(--surface)); transform: scale(0.55); }
+.ring.run .core { animation: breath 10s infinite; }
+@keyframes breath {
+  0% { transform: scale(0.55); animation-timing-function: ease-in-out; }
+  40% { transform: scale(1); animation-timing-function: ease-in-out; }
+  100% { transform: scale(0.55); }
+}
+.breath-cue { font-family: var(--display); font-size: 22px; margin: 4px 0 2px; }
+
+/* Tasks */
+.tasks { list-style: none; margin: 10px 0 0; padding: 0; display: grid; }
+.task { display: flex; align-items: flex-start; gap: 12px; padding: 8px 0; }
+.task input { width: 22px; height: 22px; margin: 1px 0 0; accent-color: var(--accent); flex: none; }
+.task label { cursor: pointer; flex: 1; display: block; margin: 0; font-weight: 400; }
+.task.done label { color: var(--muted); text-decoration: line-through; text-decoration-thickness: 1px; }
+
+/* Forms */
+label, .label { display: block; font-weight: 700; margin: 16px 0 6px; }
+input[type="text"], input[type="datetime-local"], select, textarea {
+  width: 100%; font: inherit; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px;
+}
+textarea { resize: vertical; min-height: 64px; }
+input[type="range"] { width: 100%; accent-color: var(--accent); }
+output { font-weight: 700; font-variant-numeric: tabular-nums; margin-left: 6px; color: var(--accent); }
+.inline { display: flex; gap: 8px; }
+.inline input { flex: 1; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { border: 1px solid var(--line); background: var(--bg); color: var(--ink); border-radius: 999px; padding: 7px 12px; font: inherit; font-size: 15px; cursor: pointer; }
+.chip[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); }
+.seg { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; background: var(--bg); border: 1px solid var(--line); border-radius: 12px; padding: 4px; margin-top: 12px; }
+.seg button { font: inherit; font-weight: 700; border: 0; border-radius: 9px; padding: 9px 6px; background: transparent; color: var(--muted); cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 2px color-mix(in srgb, var(--ink) 18%, transparent); }
+.xexam { margin-top: 22px; border-left: 3px solid var(--accent); padding-left: 14px; }
+.xexam h4 { margin: 0; font-family: var(--display); font-size: 20px; font-weight: 600; }
+.qnum { display: inline-block; min-width: 30px; font-size: 13px; color: var(--accent); font-variant-numeric: tabular-nums; }
+.form-error { color: var(--warn); font-weight: 700; margin-top: 12px; }
+
+/* Log entries */
+.entries { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }
+.entry { padding: 0; }
+.entry-head { display: grid; gap: 4px; width: 100%; text-align: left; background: none; border: 0; padding: 14px 16px; font: inherit; color: inherit; cursor: pointer; border-radius: 14px; }
+.entry-meta { font-size: 13px; color: var(--muted); display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.pill { font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); }
+.pill.practice { background: var(--good-soft); color: var(--good); }
+.entry-title { font-weight: 700; }
+.entry-change { display: flex; align-items: center; gap: 10px; font-size: 14px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.bar { position: relative; flex: 1; max-width: 160px; height: 6px; border-radius: 3px; background: var(--bg); }
+.bar span { position: absolute; top: 0; bottom: 0; border-radius: 3px; background: color-mix(in srgb, var(--accent) 55%, var(--surface)); }
+.entry-body { margin: 0; padding: 0 16px 4px; display: grid; gap: 12px; }
+.entry-body dt { font-size: 13px; color: var(--muted); font-weight: 700; }
+.entry-body dd { margin: 2px 0 0; white-space: pre-wrap; }
+.entry .btn-row { padding: 0 16px 16px; }
+.confirm { display: inline-flex; gap: 8px; align-items: center; flex-wrap: wrap; font-weight: 700; }
+
+/* Ladder */
+.ladder-end { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); text-align: center; margin: 2px 0; font-weight: 700; }
+.ladder { list-style: none; margin: 0; padding: 8px 22px; position: relative; isolation: isolate; display: grid; gap: 12px; }
+.ladder::before, .ladder::after { content: ""; position: absolute; top: 0; bottom: 0; width: 6px; border-radius: 3px; background: var(--rail); z-index: -2; }
+.ladder::before { left: 4px; }
+.ladder::after { right: 4px; }
+.ladder-unrated::before, .ladder-unrated::after { opacity: 0.45; }
+.rung { position: relative; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; }
+.rung::before { content: ""; position: absolute; left: -18px; right: -18px; top: 26px; height: 5px; border-radius: 3px; background: var(--rail); z-index: -1; }
+.rung-head { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 12px; width: 100%; padding: 8px 12px; min-height: 56px; background: none; border: 0; font: inherit; color: inherit; text-align: left; cursor: pointer; border-radius: 12px; }
+.fear { display: grid; place-items: center; min-width: 44px; height: 36px; border-radius: 9px; font-weight: 700; font-variant-numeric: tabular-nums; background: var(--bg); color: var(--muted); }
+.fear.low { background: var(--good-soft); color: var(--good); }
+.fear.mid { background: var(--accent-soft); color: var(--accent); }
+.fear.high { background: var(--warn-soft); color: var(--warn); }
+.rung-side { display: flex; gap: 6px; align-items: center; }
+.chip-start { font-size: 12px; font-weight: 700; padding: 3px 8px; border-radius: 999px; background: var(--accent); color: var(--on-accent); white-space: nowrap; }
+.count { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.rung-edit { padding: 0 12px 14px; border-top: 1px solid var(--line); }
+
+/* Plan */
+details.step { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; }
+details.step > summary { list-style: none; display: grid; grid-template-columns: 28px 1fr auto; gap: 12px; align-items: center; padding: 14px 16px; cursor: pointer; border-radius: 14px; }
+details.step > summary::-webkit-details-marker { display: none; }
+.stepnum { font-family: var(--display); font-size: 26px; line-height: 1; color: var(--accent); font-variant-numeric: tabular-nums; }
+.steptitle { font-weight: 700; }
+.progress { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.progress.complete { color: var(--good); font-weight: 700; }
+.stepbody { padding: 0 16px 16px; }
+.notes { margin: 12px 0 0; padding-left: 18px; color: var(--muted); display: grid; gap: 6px; }
+.section-h { margin-top: 12px; }
+.reviews { list-style: none; padding: 0; margin: 8px 0 0; display: grid; gap: 14px; }
+.reviews li { border-top: 1px solid var(--line); padding-top: 12px; display: grid; gap: 8px; }
+.numbers { list-style: none; padding: 0; margin: 10px 0 0; display: grid; }
+.numbers li { display: flex; justify-content: space-between; gap: 12px; align-items: center; padding: 12px 0; border-top: 1px solid var(--line); }
+.num { font-weight: 700; font-variant-numeric: tabular-nums; color: var(--accent); white-space: nowrap; text-decoration: none; text-align: right; }
+
+.help { margin-top: 28px; padding: 14px 16px; border-radius: 12px; background: var(--surface); border: 1px solid var(--line); font-size: 14px; color: var(--muted); }
+.help a { font-weight: 700; }
+.toast { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 999px; font-weight: 700; font-size: 14px; opacity: 0; pointer-events: none; transition: opacity 0.2s; max-width: calc(100% - 32px); text-align: center; }
+.toast.show { opacity: 1; }
+
+@media (max-width: 380px) {
+  .toggles, .actions { grid-template-columns: 1fr; }
+  h2 { font-size: 26px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ring.run .core { animation: none; transform: scale(0.8); }
+  .toast { transition: none; }
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <div class="brand">
+      <h1>Social anxiety tracker</h1>
+      <span id="status" class="status" aria-live="polite">Loading…</span>
+    </div>
+    <nav class="tabs" aria-label="Sections">
+      <a class="tab" href="#today" data-tab="today">Today</a>
+      <a class="tab" href="#log" data-tab="log">Log</a>
+      <a class="tab" href="#ladder" data-tab="ladder">Ladder</a>
+      <a class="tab" href="#plan" data-tab="plan">Plan</a>
+    </nav>
+  </header>
+  <main id="main"></main>
+  <footer class="help">Feeling unsafe? Call Samaritans on <a href="tel:116123">116 123</a> or NHS 111 and press 2. Both are free and open 24/7.</footer>
+</div>
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+<script>
+(() => {
+  'use strict';
+
+  /* ---------- helpers ---------- */
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const pad = n => String(n).padStart(2, '0');
+  const isoDate = d => d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+  const localStamp = d => isoDate(d) + 'T' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+  const parseLocal = s => {
+    const parts = String(s).split('T');
+    const ymd = parts[0].split('-').map(Number);
+    const hm = (parts[1] || '00:00').split(':').map(Number);
+    return new Date(ymd[0], (ymd[1] || 1) - 1, ymd[2] || 1, hm[0] || 0, hm[1] || 0);
+  };
+  const fmtDay = d => d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
+  const fmtLong = d => d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
+  const fmtTime = d => d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+  const newId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+  const clone = o => JSON.parse(JSON.stringify(o));
+  const todayKey = () => isoDate(new Date());
+  const withTimeout = (p, ms) => new Promise((resolve, reject) => {
+    const t = setTimeout(() => reject({ code: 'timeout' }), ms);
+    Promise.resolve(p).then(v => { clearTimeout(t); resolve(v); }, e => { clearTimeout(t); reject(e); });
+  });
+
+  /* ---------- content ---------- */
+  const TABS = ['today', 'log', 'ladder', 'plan'];
+  const CHECKIN = [
+    ['af', 'Alcohol-free'],
+    ['caf', 'Caffeine done by 2pm'],
+    ['move', 'Walked, ran or worked out'],
+    ['prac', 'Ladder practice']
+  ];
+  const STEPS = [
+    { n: 1, title: 'Book proper treatment this week',
+      lead: 'Make therapy the main treatment. Relapse is more common after stopping medication than after finishing CBT.',
+      tasks: [
+        ['s1a', 'Check your Bupa membership for mental health Direct Access, or book Bupa’s digital GP for an open referral'],
+        ['s1b', 'Ask Bupa for CBT for social anxiety using the Clark and Wells model (CT-SAD)'],
+        ['s1c', 'Check the therapist is on the BABCP’s CBT Register, and ask whether they use video feedback and behavioural experiments'],
+        ['s1d', 'Book a GP appointment about the anxiety, roughly how much you drink, and the propranolol'],
+        ['s1e', 'Ask the GP about sertraline, and to listen to your chest'],
+        ['s1f', 'When NHS Talking Therapies calls, say it’s mainly about speaking to people, and ask for CT-SAD or iCT-SAD']
+      ],
+      notes: ['Skip the book’s section on benzodiazepines. It dates from 2004 and is North American; UK guidance and your situation both point away from them.'] },
+    { n: 2, title: 'Stop drinking, your biggest crutch',
+      lead: 'Drinking to get through social situations calms you in the moment but stops you learning that you’d cope anyway.',
+      tasks: [
+        ['s2a', 'Pick a stop date and tell one person you trust'],
+        ['s2b', 'Keep no alcohol at home'],
+        ['s2c', 'At the time you’d usually drink, have a caffeine-free hot drink: rooibos, chamomile, peppermint or decaf'],
+        ['s2d', 'Put a brisk walk or a run in that slot at least twice a week']
+      ],
+      notes: [
+        'If you get shaking, sweating or nausea after stopping, call your GP: that’s withdrawal.',
+        'If it’s harder than you expect, call Change Grow Live West Kent on 0330 128 1113 (self-referral) or Drinkline on 0300 123 1110.',
+        'Expect the anxiety to feel louder for the first week or so. It usually settles as your sleep improves.'
+      ] },
+    { n: 3, title: 'Log and cross-examine your predictions',
+      lead: 'Most anxious thoughts are predictions, and testing them like evidence weakens them. Anxious people judge their own performance more harshly than observers do.',
+      tasks: [
+        ['s3a', 'Log at least three anxious moments in week 1'],
+        ['s3b', 'Answer the four cross-examination questions for each one']
+      ],
+      link: ['log', 'Open the log'] },
+    { n: 4, title: 'Build your speaking ladder',
+      lead: 'List 10–15 specific situations, rate how frightening each one is from 0 to 100, and start with one around 40–50.',
+      tasks: [
+        ['s4a', 'Rate every situation on the ladder'],
+        ['s4b', 'Add at least two situations of your own']
+      ],
+      link: ['ladder', 'Open the ladder'] },
+    { n: 5, title: 'Practise the way that works',
+      lead: 'Frequent, planned practice that you stay in long enough is what lowers the fear. Short, rare, unplanned exposures don’t help.',
+      tasks: [
+        ['s5a', 'Every Sunday, choose the week’s practices and put them in your calendar'],
+        ['s5b', 'Practise on most days, building it into your office days'],
+        ['s5c', 'Stay in each situation until the anxiety starts to fall; repeat short ones many times'],
+        ['s5d', 'Expect to feel anxious, and let the feelings come rather than fighting them'],
+        ['s5e', 'Vary the people and places'],
+        ['s5f', 'After a bad practice, log it and go again the next day'],
+        ['s5g', 'Re-rate the ladder every fortnight and move up a step']
+      ] },
+    { n: 6, title: 'Drop the other crutches one at a time',
+      lead: 'Exposure works much better when you drop safety behaviours at the same time. Tick each one once you’ve practised without it.',
+      crutches: true },
+    { n: 7, title: 'Make the chest feeling less frightening',
+      lead: 'Bringing the sensations on deliberately teaches you they’re uncomfortable but harmless, and rarely noticed by others.',
+      tasks: [
+        ['s7a', 'Get your GP to listen to your chest first'],
+        ['s7b', 'Before a low-stakes meeting, take the stairs fast so you walk in with your heart pounding'],
+        ['s7c', 'Notice what actually happens, and whether anyone says anything'],
+        ['s7d', 'For the tightness, breathe in for 4 and out for 6–8, for a few minutes'],
+        ['s7e', 'Swap one coffee for a tea every few days, rather than all at once'],
+        ['s7f', 'Have your last caffeine by about 2pm'],
+        ['s7g', 'Keep walking both ends of your commute, and add two or three harder sessions a week: Couch to 5K or a 20-minute home workout']
+      ] },
+    { n: 8, title: 'Practise being imperfect where it’s safe',
+      lead: 'Small, deliberate imperfections show you the consequences are minor. Keep them well away from client work.',
+      tasks: [
+        ['s8a', 'Let a pause sit in a conversation without rushing to fill it'],
+        ['s8b', 'Say “I’m not sure, I’ll come back to you” in an internal meeting'],
+        ['s8c', 'Spend less time preparing for a low-stakes chat'],
+        ['s8d', 'With friends, lose your place in a story on purpose and carry on'],
+        ['s8e', 'Log what actually happened each time']
+      ] }
+  ];
+  const PROPRANOLOL = [
+    'Save it for one-off big moments, not ladder practice.',
+    'Take the first dose at home on a quiet day, not before something important.',
+    'Never take it with alcohol, and stick to the dose on the label.',
+    'Ask the pharmacist whether starting lower makes sense: the book mentions much smaller doses for stage fright than a 40mg tablet.',
+    'If you’ve ever had asthma or wheeze, check with a doctor first. If your chest gets tighter or wheezy after a dose, contact a doctor straight away.',
+    'Tell your GP you’re taking it, especially if you start sertraline, which can raise propranolol levels.'
+  ];
+  const WEEKS = [
+    { title: 'Week 1', tasks: [
+      ['w1a', 'Bupa and GP contacted (Step 1)'],
+      ['w1b', 'Stop drinking (Step 2)'],
+      ['w1c', 'Start the log (Step 3)'],
+      ['w1d', 'Start the coffee-to-tea swap (Step 7)']
+    ] },
+    { title: 'Week 2', tasks: [
+      ['w2a', 'Write and rate your ladder (Step 4)'],
+      ['w2b', 'First two or three practices from the bottom of the ladder (Step 5)'],
+      ['w2c', 'List your crutches (Step 6)']
+    ] },
+    { title: 'Weeks 3 to 8', tasks: [
+      ['w3a', 'Practise on most days, dropping one crutch at a time'],
+      ['w3b', 'Re-rate the ladder every fortnight'],
+      ['w3c', 'One deliberate imperfection a week (Step 8)']
+    ] }
+  ];
+  const REVIEW_QS = [
+    ['helped', 'Which steps have helped most?'],
+    ['avoiding', 'Where am I still avoiding things?'],
+    ['worse', 'Is anything getting worse? If so, tell your GP or therapist.']
+  ];
+  const NUMBERS = [
+    ['Samaritans', 'Any time things feel too much', '116 123', '24/7', 'tel:116123'],
+    ['NHS 111, press 2', 'Urgent mental health help', '111', '24/7', 'tel:111'],
+    ['Drinkline', 'Talking through your drinking, anonymously', '0300 123 1110', 'Weekdays 9am–8pm, weekends 11am–4pm', 'tel:03001231110'],
+    ['Change Grow Live, West Kent', 'Free alcohol support; refer yourself', '0330 128 1113', 'Weekdays', 'tel:03301281113'],
+    ['LawCare', 'Confidential support for people working in law', '0800 279 6888', 'Weekdays 9am–5pm', 'tel:08002796888'],
+    ['NHS Kent and Medway Talking Therapies', 'Chasing your self-referral', '0333 091 0414', '', 'tel:03330910414']
+  ];
+  const BODY_TAGS = ['Tight chest', 'Racing heart', 'Shaky voice', 'Shaking', 'Sweating', 'Blushing', 'Mind went blank'];
+  const PROTECT_TAGS = ['Had a drink', 'Avoided it', 'Left early', 'Over-rehearsed', 'Avoided eye contact', 'Took propranolol', 'Talked fast', 'Asked questions to deflect'];
+  const XEXAM = [
+    ['evidence', 'What’s the evidence for it, and against it?'],
+    ['alternatives', 'What else could explain what happened?'],
+    ['sowhat', 'So what if it does happen? Will it matter in a month?'],
+    ['colleague', 'What would I think if a colleague did the same?']
+  ];
+  const DEFAULT_LADDER = [
+    'Ask a stranger for directions',
+    'Go to Toastmasters as a guest and just watch',
+    'Small talk in the office kitchen',
+    'Tell a colleague about your weekend',
+    'Phone a colleague instead of emailing',
+    'Ask one question in a team meeting',
+    'Lunch with a colleague',
+    'Give a short update on a matter',
+    'Speak up in a training or know-how session',
+    'Stay an hour at work drinks on soft drinks, once you’re steady without alcohol'
+  ];
+  const DEFAULT_CRUTCHES = [
+    'Drinking before or during social situations',
+    'Over-rehearsing what I’ll say',
+    'Avoiding eye contact',
+    'Asking questions so I don’t have to talk about myself',
+    'Speaking fast or quietly',
+    'Leaving early'
+  ];
+
+  const defaultState = () => ({
+    v: 1,
+    checks: {},
+    crutches: DEFAULT_CRUTCHES.map(t => ({ id: newId(), text: t, done: false, custom: false })),
+    ladder: DEFAULT_LADDER.map(t => ({ id: newId(), text: t, fear: null, firstFear: null, practised: [] })),
+    daily: {},
+    reviews: []
+  });
+  const normaliseState = s => {
+    const d = defaultState();
+    const out = Object.assign(d, s || {});
+    if (!out.checks || typeof out.checks !== 'object') out.checks = {};
+    if (!Array.isArray(out.crutches)) out.crutches = d.crutches;
+    if (!Array.isArray(out.ladder)) out.ladder = d.ladder;
+    out.ladder.forEach(r => { if (!Array.isArray(r.practised)) r.practised = []; });
+    if (!out.daily || typeof out.daily !== 'object') out.daily = {};
+    if (!Array.isArray(out.reviews)) out.reviews = [];
+    return out;
+  };
+
+  /* ---------- state ---------- */
+  let state = defaultState();
+  let logs = {};            // 'YYYY-MM' -> [entries]
+  let ready = false;
+  let mode = 'loading';     // 'db' | 'local' | 'loading'
+  let db = null, uid = null;
+  let saveStatus = 'idle';  // idle | saving | saved | error | local | localfail
+  const failed = new Set();
+  let tab = 'today';
+  let form = null;          // draft entry
+  let formError = '';
+  let openEntry = null, openRung = null, confirmDel = null;
+  let copyFallback = null;
+  let reviewDraft = {};
+  const openSteps = new Set();
+  const breath = { on: false, start: 0, timer: null, cue: '' };
+
+  const allEntries = () => Object.keys(logs).reduce((a, m) => a.concat(logs[m]), []).sort((a, b) => (a.at < b.at ? 1 : a.at > b.at ? -1 : 0));
+
+  /* ---------- persistence ---------- */
+  const LOCAL_KEY = 'social-anxiety-tracker-v1';
+  const readLocal = () => { try { const raw = localStorage.getItem(LOCAL_KEY); return raw ? JSON.parse(raw) : null; } catch (e) { return null; } };
+  const writeLocal = () => {
+    try { localStorage.setItem(LOCAL_KEY, JSON.stringify({ state, logs })); return true; } catch (e) { return false; }
+  };
+
+  const writing = {}, again = {};
+  const docBody = id => id === 'state' ? clone(state) : { entries: clone(logs[id.slice(5)] || []) };
+
+  async function writeDoc(id) {
+    if (mode !== 'db') {
+      saveStatus = writeLocal() ? 'local' : 'localfail';
+      renderStatus();
+      return;
+    }
+    if (writing[id]) { again[id] = true; return; }
+    writing[id] = true;
+    saveStatus = 'saving'; renderStatus();
+    try {
+      await withTimeout(db.doc('data/users/' + uid + '/' + id).set(docBody(id)), 15000);
+      failed.delete(id);
+      if (!failed.size) saveStatus = 'saved';
+    } catch (e) {
+      const code = e && e.code;
+      if (code === 'invalid_argument' || code === 'not_granted' || code === 'revoked' || code === 'capability_disabled' || code === 'capability_removed') {
+        mode = 'local';
+        saveStatus = writeLocal() ? 'local' : 'localfail';
+        toast('Saving on this device only for now.');
+      } else if (code === 'quota_exceeded') {
+        failed.add(id); saveStatus = 'error';
+        toast('Storage is full. Delete some old log entries, then try again.');
+      } else {
+        failed.add(id); saveStatus = 'error';
+        writeLocal();
+      }
+    } finally {
+      writing[id] = false;
+      renderStatus();
+      if (again[id]) { again[id] = false; writeDoc(id); }
+    }
+  }
+  let stateTimer = null;
+  const scheduleState = () => { clearTimeout(stateTimer); stateTimer = setTimeout(() => writeDoc('state'), 600); };
+  const writeMonth = m => writeDoc('logs-' + m);
+  const retryWrites = () => { Array.from(failed).forEach(id => writeDoc(id)); };
+
+  function loadFromLocal() {
+    const local = readLocal();
+    if (local) { state = normaliseState(local.state); logs = local.logs && typeof local.logs === 'object' ? local.logs : {}; }
+  }
+
+  async function connect() {
+    const c = window.claude;
+    let user = null;
+    if (c && typeof c.use === 'function') {
+      try { db = await withTimeout(c.use('db'), 11000); } catch (e) { db = null; }
+      if (db) { try { user = await withTimeout(c.use('user'), 11000); } catch (e) { user = null; } }
+      if (db && user && typeof user.id === 'function') { try { uid = await withTimeout(user.id(), 10000); } catch (e) { uid = null; } }
+    }
+    if (db && uid) {
+      try {
+        const snap = await withTimeout(db.collection('data/users/' + uid).get(), 10000);
+        let hasState = false;
+        const loaded = {};
+        snap.docs.forEach(d => {
+          if (!d.exists) return;
+          const body = d.data() || {};
+          if (d.id === 'state') { state = normaliseState(clone(body)); hasState = true; }
+          else if (d.id.indexOf('logs-') === 0 && Array.isArray(body.entries)) { loaded[d.id.slice(5)] = clone(body.entries); }
+        });
+        logs = loaded;
+        mode = 'db';
+        saveStatus = 'saved';
+        if (!hasState && !Object.keys(loaded).length) {
+          const local = readLocal();
+          if (local && local.state) {
+            state = normaliseState(local.state);
+            logs = local.logs && typeof local.logs === 'object' ? local.logs : {};
+            writeDoc('state');
+            Object.keys(logs).forEach(writeMonth);
+          } else {
+            saveStatus = 'idle';
+          }
+        }
+      } catch (e) {
+        mode = 'local'; loadFromLocal(); saveStatus = 'local';
+      }
+    } else {
+      mode = 'local'; loadFromLocal(); saveStatus = 'local';
+    }
+    ready = true;
+    render();
+  }
+
+  /* ---------- rendering ---------- */
+  const main = document.getElementById('main');
+  const statusEl = document.getElementById('status');
+
+  function renderStatus() {
+    let html = '';
+    if (!ready) html = 'Loading…';
+    else if (saveStatus === 'saving') html = 'Saving…';
+    else if (saveStatus === 'saved') html = 'Saved';
+    else if (saveStatus === 'idle') html = mode === 'db' ? 'Saves to your account' : 'Saved on this device';
+    else if (saveStatus === 'local') html = 'Saved on this device';
+    else if (saveStatus === 'localfail') html = 'Can’t save here';
+    else if (saveStatus === 'error') html = 'Couldn’t save <button type="button" data-action="retry">Retry</button>';
+    statusEl.innerHTML = html;
+  }
+
+  const dis = () => (ready ? '' : ' disabled');
+
+  const taskItem = (id, text) => {
+    const done = !!state.checks[id];
+    return '<li class="task' + (done ? ' done' : '') + '"><input type="checkbox" id="t-' + id + '" data-action="check" data-id="' + id + '"' + (done ? ' checked' : '') + dis() + '><label for="t-' + id + '">' + esc(text) + '</label></li>';
+  };
+
+  const lastNDays = n => {
+    const out = [];
+    const d = new Date();
+    d.setHours(12, 0, 0, 0);
+    d.setDate(d.getDate() - (n - 1));
+    for (let i = 0; i < n; i++) { out.push(isoDate(d)); d.setDate(d.getDate() + 1); }
+    return out;
+  };
+  const streak = () => {
+    const d = new Date(); d.setHours(12, 0, 0, 0);
+    if (!(state.daily[isoDate(d)] || {}).af) d.setDate(d.getDate() - 1);
+    let n = 0;
+    while ((state.daily[isoDate(d)] || {}).af) { n++; d.setDate(d.getDate() - 1); }
+    return n;
+  };
+  const nextTasks = n => {
+    const out = [];
+    WEEKS.forEach(w => w.tasks.forEach(t => { if (!state.checks[t[0]] && out.length < n) out.push(t); }));
+    return out;
+  };
+
+  function renderToday() {
+    const tk = todayKey();
+    const d = state.daily[tk] || {};
+    const st = streak();
+    const days = lastNDays(14);
+    const counts = { caf: 0, move: 0, prac: 0 };
+    lastNDays(7).forEach(k => { const x = state.daily[k] || {}; Object.keys(counts).forEach(f => { if (x[f]) counts[f]++; }); });
+    const next = nextTasks(3);
+    const elapsed = breath.on ? Date.now() - breath.start : 0;
+    return '<section class="stack">' +
+      '<div class="card">' +
+        '<div class="eyebrow">' + esc(fmtLong(new Date())) + '</div>' +
+        '<h2>Today</h2>' +
+        '<div class="toggles" role="group" aria-label="Today’s check-in">' +
+          CHECKIN.map(c => '<button type="button" class="toggle" data-action="daily" data-key="' + c[0] + '" aria-pressed="' + (d[c[0]] ? 'true' : 'false') + '"' + dis() + '><span class="tick" aria-hidden="true"></span>' + esc(c[1]) + '</button>').join('') +
+        '</div>' +
+      '</div>' +
+      '<div class="card">' +
+        '<div class="streak-top"><span class="big">' + st + '</span><span class="muted">' + (st === 1 ? 'day' : 'days') + ' alcohol-free in a row</span></div>' +
+        '<ol class="dots" aria-label="Alcohol-free days over the last 14 days">' +
+          days.map(k => {
+            const on = (state.daily[k] || {}).af;
+            return '<li class="dot' + (on ? ' on' : '') + (k === tk ? ' today' : '') + '"><span class="sr">' + esc(fmtDay(parseLocal(k))) + ': ' + (on ? 'alcohol-free' : 'not marked') + '</span></li>';
+          }).join('') +
+        '</ol>' +
+        '<div class="dots-legend" aria-hidden="true"><span>2 weeks ago</span><span>Today</span></div>' +
+        '<p class="weekline small muted">Last 7 days</p>' +
+        '<div class="stats">' +
+          [['prac', 'Ladder practice'], ['move', 'Exercise'], ['caf', 'Caffeine by 2pm']].map(s =>
+            '<div class="stat"><b>' + counts[s[0]] + '<small> /7 days</small></b><span>' + esc(s[1]) + '</span></div>').join('') +
+        '</div>' +
+      '</div>' +
+      '<div class="actions">' +
+        '<button type="button" class="btn" data-action="new-entry" data-type="moment"' + dis() + '>Log an anxious moment</button>' +
+        '<button type="button" class="btn btn-quiet" data-action="new-entry" data-type="practice"' + dis() + '>Log a ladder practice</button>' +
+      '</div>' +
+      '<div class="card">' +
+        '<h3>Next up</h3>' +
+        (next.length ? '<ul class="tasks">' + next.map(t => taskItem(t[0], t[1])).join('') + '</ul>'
+          : '<p class="lead muted">Every week-by-week task is ticked. Keep practising most days and re-rate your ladder every fortnight.</p>') +
+      '</div>' +
+      '<div class="card">' +
+        '<div class="breathe-row">' +
+          '<div class="ring' + (breath.on ? ' run' : '') + '" aria-hidden="true"><div class="core"' + (breath.on ? ' style="animation-delay:-' + (elapsed % 10000) + 'ms"' : '') + '></div></div>' +
+          '<div>' +
+            '<h3>Slow breathing</h3>' +
+            '<p class="muted small">For a tight chest: in for 4, out for 6.</p>' +
+            '<p class="breath-cue" id="breath-cue" aria-live="polite">' + (breath.on ? esc(breath.cue) : 'Ready when you are') + '</p>' +
+            '<button type="button" class="btn btn-quiet" data-action="breathe">' + (breath.on ? 'Stop' : 'Start 3 minutes') + '</button>' +
+          '</div>' +
+        '</div>' +
+      '</div>' +
+    '</section>';
+  }
+
+  function blankDraft(type, rungId) {
+    const r = rungId ? state.ladder.find(x => x.id === rungId) : null;
+    return {
+      id: null, type: type === 'practice' ? 'practice' : 'moment', at: localStamp(new Date()),
+      rungId: r ? r.id : '', situation: r ? r.text : '',
+      body: [], bodyNote: '', prediction: '', before: 50,
+      protect: [], protectNote: '',
+      evidence: '', alternatives: '', sowhat: '', colleague: '',
+      outcome: '', after: 50
+    };
+  }
+
+  function renderForm() {
+    const f = form;
+    const rungs = state.ladder.slice().sort((a, b) => (a.fear == null ? 999 : a.fear) - (b.fear == null ? 999 : b.fear));
+    const chip = (group, tag) => '<button type="button" class="chip" data-action="tag" data-group="' + group + '" data-tag="' + esc(tag) + '" aria-pressed="' + (f[group].indexOf(tag) >= 0 ? 'true' : 'false') + '">' + esc(tag) + '</button>';
+    return '<form class="card" id="entry-form" data-form="entry" novalidate>' +
+      '<h3>' + (f.id ? 'Edit entry' : 'New entry') + '</h3>' +
+      '<div class="seg" role="group" aria-label="Entry type">' +
+        '<button type="button" data-action="set-type" data-type="moment" aria-pressed="' + (f.type === 'moment') + '">Anxious moment</button>' +
+        '<button type="button" data-action="set-type" data-type="practice" aria-pressed="' + (f.type === 'practice') + '">Ladder practice</button>' +
+      '</div>' +
+      '<label for="f-at">When</label>' +
+      '<input id="f-at" type="datetime-local" data-field="at" value="' + esc(f.at) + '">' +
+      '<div data-only="practice"' + (f.type === 'practice' ? '' : ' hidden') + '>' +
+        '<label for="f-rung">Which rung?</label>' +
+        '<select id="f-rung" data-field="rungId"><option value="">Not on my ladder</option>' +
+          rungs.map(r => '<option value="' + r.id + '"' + (f.rungId === r.id ? ' selected' : '') + '>' + esc((r.fear == null ? '' : r.fear + ' · ') + r.text) + '</option>').join('') +
+        '</select>' +
+      '</div>' +
+      '<label for="f-situation">The situation</label>' +
+      '<textarea id="f-situation" rows="2" data-field="situation" placeholder="Where were you, who was there, what was happening?">' + esc(f.situation) + '</textarea>' +
+      '<span class="label" id="l-body">What my body did</span>' +
+      '<div class="chips" role="group" aria-labelledby="l-body">' + BODY_TAGS.map(t => chip('body', t)).join('') + '</div>' +
+      '<label for="f-bodyNote" class="sr">Anything else about how your body felt</label>' +
+      '<input id="f-bodyNote" type="text" data-field="bodyNote" placeholder="Anything else?" value="' + esc(f.bodyNote) + '" style="margin-top:8px">' +
+      '<label for="f-prediction">What I predicted would happen</label>' +
+      '<textarea id="f-prediction" rows="2" data-field="prediction" placeholder="e.g. I’ll go blank and they’ll think I don’t know the case">' + esc(f.prediction) + '</textarea>' +
+      '<label for="f-before">Anxiety at its worst <output id="o-before">' + f.before + '</output></label>' +
+      '<input id="f-before" type="range" min="0" max="100" step="5" data-field="before" value="' + f.before + '">' +
+      '<span class="label" id="l-protect">What I did to protect myself</span>' +
+      '<div class="chips" role="group" aria-labelledby="l-protect">' + PROTECT_TAGS.map(t => chip('protect', t)).join('') + '</div>' +
+      '<label for="f-protectNote" class="sr">Anything else you did to protect yourself</label>' +
+      '<input id="f-protectNote" type="text" data-field="protectNote" placeholder="Anything else?" value="' + esc(f.protectNote) + '" style="margin-top:8px">' +
+      '<div class="xexam">' +
+        '<h4>Cross-examine the prediction</h4>' +
+        XEXAM.map((q, i) => '<label for="f-' + q[0] + '"><span class="qnum">Q' + (i + 1) + '</span>' + esc(q[1]) + '</label><textarea id="f-' + q[0] + '" rows="2" data-field="' + q[0] + '">' + esc(f[q[0]]) + '</textarea>').join('') +
+      '</div>' +
+      '<label for="f-outcome">What actually happened</label>' +
+      '<textarea id="f-outcome" rows="2" data-field="outcome">' + esc(f.outcome) + '</textarea>' +
+      '<label for="f-after">Anxiety afterwards <output id="o-after">' + f.after + '</output></label>' +
+      '<input id="f-after" type="range" min="0" max="100" step="5" data-field="after" value="' + f.after + '">' +
+      (formError ? '<p class="form-error" role="alert">' + esc(formError) + '</p>' : '') +
+      '<div class="btn-row"><button type="submit" class="btn">Save entry</button><button type="button" class="btn btn-quiet" data-action="cancel-entry">Cancel</button></div>' +
+    '</form>';
+  }
+
+  function renderEntry(e) {
+    const d = parseLocal(e.at);
+    const open = openEntry === e.id;
+    const rung = e.rungId ? state.ladder.find(r => r.id === e.rungId) : null;
+    const before = Number(e.before), after = Number(e.after);
+    const lo = Math.min(before, after), hi = Math.max(before, after);
+    const row = (label, value) => value ? '<div><dt>' + esc(label) + '</dt><dd>' + esc(value) + '</dd></div>' : '';
+    const joinTags = (tags, note) => (tags || []).concat(note ? [note] : []).join(', ');
+    return '<li class="entry card">' +
+      '<button type="button" class="entry-head" data-action="toggle-entry" data-id="' + e.id + '" aria-expanded="' + open + '">' +
+        '<span class="entry-meta"><span class="pill ' + (e.type === 'practice' ? 'practice' : '') + '">' + (e.type === 'practice' ? 'Practice' : 'Moment') + '</span>' + esc(fmtDay(d)) + ', ' + esc(fmtTime(d)) + '</span>' +
+        '<span class="entry-title">' + esc(e.situation || (rung && rung.text) || 'Untitled entry') + '</span>' +
+        '<span class="entry-change">Anxiety ' + before + ' → ' + after + '<span class="bar" aria-hidden="true"><span style="left:' + lo + '%;width:' + Math.max(2, hi - lo) + '%"></span></span></span>' +
+      '</button>' +
+      (open ? '<dl class="entry-body">' +
+          row('Ladder rung', rung ? rung.text : '') +
+          row('What my body did', joinTags(e.body, e.bodyNote)) +
+          row('What I predicted', e.prediction) +
+          row('What I did to protect myself', joinTags(e.protect, e.protectNote)) +
+          XEXAM.map(q => row(q[1], e[q[0]])).join('') +
+          row('What actually happened', e.outcome) +
+        '</dl>' +
+        '<div class="btn-row"><button type="button" class="btn btn-quiet" data-action="edit-entry" data-id="' + e.id + '">Edit</button>' +
+          (confirmDel === e.id
+            ? '<span class="confirm">Delete this entry? <button type="button" class="btn btn-danger" data-action="delete-entry" data-id="' + e.id + '">Delete</button><button type="button" class="btn btn-quiet" data-action="cancel-delete">Keep</button></span>'
+            : '<button type="button" class="btn btn-quiet" data-action="ask-delete" data-id="' + e.id + '">Delete</button>') +
+        '</div>' : '') +
+    '</li>';
+  }
+
+  function renderLog() {
+    const entries = allEntries();
+    return '<section class="stack">' +
+      '<div class="row-between"><h2>Log</h2>' +
+        '<div class="btn-row" style="margin-top:0">' +
+          (form ? '' : '<button type="button" class="btn" data-action="new-entry" data-type="moment"' + dis() + '>New entry</button>') +
+          '<button type="button" class="btn btn-quiet" data-action="copy-log"' + (entries.length ? '' : ' disabled') + '>Copy for my therapist</button>' +
+        '</div>' +
+      '</div>' +
+      (copyFallback ? '<div class="card"><p>Copying isn’t allowed here. Select the text below and copy it yourself.</p><label for="copy-fallback" class="sr">Your log as text</label><textarea id="copy-fallback" rows="8" readonly>' + esc(copyFallback) + '</textarea><div class="btn-row"><button type="button" class="btn btn-quiet" data-action="close-copy">Done</button></div></div>' : '') +
+      (form ? renderForm() : '') +
+      (entries.length ? '<ul class="entries">' + entries.map(renderEntry).join('') + '</ul>'
+        : '<div class="card"><p>No entries yet. After an anxious moment or a ladder practice, add one here: it takes about two minutes, and the four questions do the real work.</p></div>') +
+    '</section>';
+  }
+
+  const startHereId = () => {
+    const rated = state.ladder.filter(r => r.fear != null && r.practised.length < 3).sort((a, b) => a.fear - b.fear);
+    const pick = rated.find(r => r.fear >= 35) || null;
+    return pick ? pick.id : null;
+  };
+
+  function renderRung(r, startId) {
+    const lvl = r.fear == null ? '' : r.fear < 35 ? ' low' : r.fear <= 65 ? ' mid' : ' high';
+    const open = openRung === r.id;
+    const recent = r.practised.slice(-5).map(k => esc(fmtDay(parseLocal(k)))).join(', ');
+    return '<li class="rung">' +
+      '<button type="button" class="rung-head" data-action="toggle-rung" data-id="' + r.id + '" aria-expanded="' + open + '">' +
+        '<span class="fear' + lvl + '"><span class="sr">Fear </span>' + (r.fear == null ? '–' : r.fear) + '</span>' +
+        '<span class="rung-text">' + esc(r.text) + '</span>' +
+        '<span class="rung-side">' + (startId === r.id ? '<span class="chip-start">Start here</span>' : '') +
+          (r.practised.length ? '<span class="count"><span class="sr">practised </span>×' + r.practised.length + '</span>' : '') + '</span>' +
+      '</button>' +
+      (open ? '<div class="rung-edit">' +
+        '<label for="rt-' + r.id + '">Situation</label>' +
+        '<input id="rt-' + r.id + '" type="text" value="' + esc(r.text) + '" data-action="rung-text" data-id="' + r.id + '">' +
+        '<label for="rf-' + r.id + '">Fear now <output id="rfo-' + r.id + '">' + (r.fear == null ? 'not rated' : r.fear) + '</output></label>' +
+        '<input id="rf-' + r.id + '" type="range" min="0" max="100" step="5" value="' + (r.fear == null ? 50 : r.fear) + '" data-action="rung-fear" data-id="' + r.id + '">' +
+        (r.firstFear != null && r.firstFear !== r.fear ? '<p class="small muted">First rated ' + r.firstFear + '.</p>' : '') +
+        (r.practised.length ? '<p class="small muted">Practised ' + r.practised.length + (r.practised.length === 1 ? ' time' : ' times') + ', most recently ' + recent + '.</p>' : '') +
+        '<div class="btn-row">' +
+          '<button type="button" class="btn" data-action="save-rating" data-id="' + r.id + '">Save rating</button>' +
+          '<button type="button" class="btn btn-quiet" data-action="practised" data-id="' + r.id + '">Practised today</button>' +
+          '<button type="button" class="btn btn-quiet" data-action="log-practice" data-id="' + r.id + '">Log how it went</button>' +
+          (confirmDel === r.id
+            ? '<span class="confirm">Remove this rung? <button type="button" class="btn btn-danger" data-action="delete-rung" data-id="' + r.id + '">Remove</button><button type="button" class="btn btn-quiet" data-action="cancel-delete">Keep</button></span>'
+            : '<button type="button" class="btn btn-quiet" data-action="ask-delete" data-id="' + r.id + '">Remove</button>') +
+        '</div>' +
+      '</div>' : '') +
+    '</li>';
+  }
+
+  function renderLadder() {
+    const rated = state.ladder.filter(r => r.fear != null).sort((a, b) => b.fear - a.fear);
+    const unrated = state.ladder.filter(r => r.fear == null);
+    const startId = startHereId();
+    const practices = state.ladder.reduce((n, r) => n + r.practised.length, 0);
+    return '<section class="stack">' +
+      '<div class="row-between"><h2>Ladder</h2><span class="muted small">' + state.ladder.length + ' situations · ' + rated.length + ' rated · ' + practices + ' practices</span></div>' +
+      '<p class="muted">Tap a situation to rate how frightening it is from 0 to 100. Start around 40–50, practise until the number drops, then move up.</p>' +
+      (rated.length
+        ? '<div><div class="ladder-end">Hardest</div><ol class="ladder" aria-label="Rated situations, hardest first">' + rated.map(r => renderRung(r, startId)).join('') + '</ol><div class="ladder-end">Easiest</div></div>'
+        : '<div class="card"><p>Your ladder builds itself as you rate situations. Rate the ones below to see them in order.</p></div>') +
+      (unrated.length ? '<h3 class="section-h">Not rated yet</h3><ol class="ladder ladder-unrated" aria-label="Situations not rated yet">' + unrated.map(r => renderRung(r, startId)).join('') + '</ol>' : '') +
+      '<form class="card" data-form="add-rung"><label for="new-rung" style="margin-top:0">Add a situation</label><div class="inline"><input id="new-rung" type="text" placeholder="e.g. Ask a question on a client call" autocomplete="off"' + dis() + '><button class="btn" type="submit"' + dis() + '>Add</button></div></form>' +
+    '</section>';
+  }
+
+  function stepProgress(s) {
+    if (s.crutches) return [state.crutches.filter(c => c.done).length, state.crutches.length];
+    return [s.tasks.filter(t => state.checks[t[0]]).length, s.tasks.length];
+  }
+
+  function renderStep(s) {
+    const p = stepProgress(s);
+    const complete = p[1] > 0 && p[0] === p[1];
+    let body = '<p>' + esc(s.lead) + '</p>';
+    if (s.tasks) body += '<ul class="tasks">' + s.tasks.map(t => taskItem(t[0], t[1])).join('') + '</ul>';
+    if (s.crutches) {
+      body += '<ul class="tasks">' + state.crutches.map(c =>
+        '<li class="task' + (c.done ? ' done' : '') + '"><input type="checkbox" id="c-' + c.id + '" data-action="crutch" data-id="' + c.id + '"' + (c.done ? ' checked' : '') + dis() + '><label for="c-' + c.id + '">' + esc(c.text) + '</label>' +
+        (c.custom ? '<button type="button" class="icon-btn" data-action="remove-crutch" data-id="' + c.id + '" aria-label="Remove ' + esc(c.text) + '">×</button>' : '') + '</li>').join('') + '</ul>' +
+        '<form class="inline" data-form="add-crutch" style="margin-top:8px"><label for="new-crutch" class="sr">Add your own crutch</label><input id="new-crutch" type="text" placeholder="Add your own" autocomplete="off"' + dis() + '><button class="btn btn-quiet" type="submit"' + dis() + '>Add</button></form>' +
+        '<h4>Propranolol rules</h4><ul class="notes">' + PROPRANOLOL.map(t => '<li>' + esc(t) + '</li>').join('') + '</ul>';
+    }
+    if (s.notes) body += '<ul class="notes">' + s.notes.map(t => '<li>' + esc(t) + '</li>').join('') + '</ul>';
+    if (s.link) body += '<div class="btn-row"><a class="btn btn-quiet" href="#' + s.link[0] + '">' + esc(s.link[1]) + '</a></div>';
+    return '<details class="step" data-step="' + s.n + '"' + (openSteps.has(s.n) ? ' open' : '') + '>' +
+      '<summary><span class="stepnum">' + s.n + '</span><span class="steptitle">' + esc(s.title) + '</span><span class="progress' + (complete ? ' complete' : '') + '">' + (complete ? 'Done' : p[0] + '/' + p[1]) + '</span></summary>' +
+      '<div class="stepbody">' + body + '</div>' +
+    '</details>';
+  }
+
+  function renderPlan() {
+    return '<section class="stack">' +
+      '<div><h2>Plan</h2><p class="lead muted">Eight steps from <cite>10 Simple Solutions to Shyness</cite>, adapted for you. The aim isn’t zero anxiety; it’s anxiety that no longer decides what you do.</p></div>' +
+      STEPS.map(renderStep).join('') +
+      '<h3 class="section-h">Week by week</h3>' +
+      WEEKS.map(w => '<div class="card"><h4 style="margin-top:0">' + esc(w.title) + '</h4><ul class="tasks">' + w.tasks.map(t => taskItem(t[0], t[1])).join('') + '</ul></div>').join('') +
+      '<div class="card"><h3>Fortnightly review</h3>' +
+        '<form data-form="review">' +
+          REVIEW_QS.map(q => '<label for="rv-' + q[0] + '">' + esc(q[1]) + '</label><textarea id="rv-' + q[0] + '" rows="2" data-review="' + q[0] + '"' + dis() + '>' + esc(reviewDraft[q[0]] || '') + '</textarea>').join('') +
+          '<div class="btn-row"><button class="btn" type="submit"' + dis() + '>Save review</button></div>' +
+        '</form>' +
+        (state.reviews.length ? '<h4>Past reviews</h4><ul class="reviews">' + state.reviews.slice().reverse().map(r =>
+          '<li><div class="small muted">' + esc(fmtDay(parseLocal(r.date))) + '</div>' +
+          REVIEW_QS.map(q => r[q[0]] ? '<p><strong>' + esc(q[1]) + '</strong><br>' + esc(r[q[0]]) + '</p>' : '').join('') + '</li>').join('') + '</ul>' : '') +
+      '</div>' +
+      '<div class="card" id="numbers"><h3>Useful numbers</h3><p class="lead muted small">If you ever feel unsafe, call Samaritans or NHS 111 (press 2) straight away.</p>' +
+        '<ul class="numbers">' + NUMBERS.map(n => '<li><div><strong>' + esc(n[0]) + '</strong><div class="small muted">' + esc(n[1]) + (n[3] ? ' · ' + esc(n[3]) : '') + '</div></div><a class="num" href="' + n[4] + '">' + esc(n[2]) + '</a></li>').join('') +
+        '<li><div><strong>Bupa</strong><div class="small muted">Direct Access or the digital GP</div></div><span class="num muted">On your card or in My Bupa</span></li></ul>' +
+      '</div>' +
+    '</section>';
+  }
+
+  function render() {
+    document.querySelectorAll('.tab').forEach(a => {
+      if (a.dataset.tab === tab) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
+    });
+    renderStatus();
+    let html = '';
+    if (tab === 'log') html = renderLog();
+    else if (tab === 'ladder') html = renderLadder();
+    else if (tab === 'plan') html = renderPlan();
+    else html = renderToday();
+    main.innerHTML = html;
+  }
+
+  /* ---------- actions ---------- */
+  let toastTimer = null;
+  function toast(msg) {
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => el.classList.remove('show'), 2600);
+  }
+
+  function go(t) {
+    if (location.hash !== '#' + t) location.hash = '#' + t;
+    else { tab = t; render(); }
+  }
+
+  function openForm(type, rungId) {
+    if (!ready) return;
+    form = blankDraft(type, rungId);
+    formError = '';
+    copyFallback = null;
+    if (tab !== 'log') { pendingFocus = true; go('log'); }
+    else { render(); focusForm(); }
+  }
+  let pendingFocus = false;
+  function focusForm() {
+    const el = document.getElementById('entry-form');
+    if (!el) return;
+    el.scrollIntoView({ block: 'start', behavior: 'auto' });
+    const first = document.getElementById('f-situation');
+    if (first) first.focus({ preventScroll: true });
+  }
+
+  function saveEntry() {
+    const e = clone(form);
+    if (!String(e.situation).trim() && !String(e.prediction).trim() && !String(e.outcome).trim()) {
+      formError = 'Add at least the situation before saving.';
+      render(); focusForm();
+      return;
+    }
+    if (!e.at) e.at = localStamp(new Date());
+    if (!e.id) e.id = newId();
+    let oldMonth = null;
+    Object.keys(logs).forEach(m => {
+      const i = logs[m].findIndex(x => x.id === e.id);
+      if (i >= 0) { logs[m].splice(i, 1); oldMonth = m; }
+    });
+    const m = e.at.slice(0, 7);
+    (logs[m] = logs[m] || []).push(e);
+    if (e.type === 'practice') {
+      const day = e.at.slice(0, 10);
+      const r = e.rungId ? state.ladder.find(x => x.id === e.rungId) : null;
+      if (r && r.practised.indexOf(day) < 0) { r.practised.push(day); r.practised.sort(); }
+      (state.daily[day] = state.daily[day] || {}).prac = true;
+      scheduleState();
+    }
+    writeMonth(m);
+    if (oldMonth && oldMonth !== m) writeMonth(oldMonth);
+    form = null; formError = ''; openEntry = e.id;
+    render();
+    toast('Entry saved');
+  }
+
+  function deleteEntry(id) {
+    Object.keys(logs).forEach(m => {
+      const i = logs[m].findIndex(x => x.id === id);
+      if (i >= 0) { logs[m].splice(i, 1); writeMonth(m); }
+    });
+    confirmDel = null; openEntry = null;
+    render();
+    toast('Entry deleted');
+  }
+
+  function buildExport() {
+    const lines = ['Social anxiety log, copied ' + fmtLong(new Date()), ''];
+    allEntries().forEach(e => {
+      const d = parseLocal(e.at);
+      const rung = e.rungId ? state.ladder.find(r => r.id === e.rungId) : null;
+      lines.push(fmtDay(d) + ', ' + fmtTime(d) + ' · ' + (e.type === 'practice' ? 'Ladder practice' : 'Anxious moment'));
+      const add = (label, v) => { if (v) lines.push(label + ': ' + v); };
+      add('Situation', e.situation);
+      add('Ladder rung', rung ? rung.text : '');
+      add('Body', (e.body || []).concat(e.bodyNote ? [e.bodyNote] : []).join(', '));
+      add('Predicted', e.prediction);
+      lines.push('Anxiety at worst: ' + e.before + '/100');
+      add('Protected myself by', (e.protect || []).concat(e.protectNote ? [e.protectNote] : []).join(', '));
+      XEXAM.forEach(q => add(q[1], e[q[0]]));
+      add('What actually happened', e.outcome);
+      lines.push('Anxiety afterwards: ' + e.after + '/100');
+      lines.push('');
+    });
+    return lines.join('\n');
+  }
+
+  async function copyLog() {
+    const text = buildExport();
+    try {
+      await navigator.clipboard.writeText(text);
+      toast('Copied. Paste it into a message or note.');
+    } catch (e) {
+      copyFallback = text;
+      render();
+      const ta = document.getElementById('copy-fallback');
+      if (ta) { ta.focus(); ta.select(); }
+    }
+  }
+
+  function toggleBreath() {
+    if (breath.on) { stopBreath(); return; }
+    breath.on = true; breath.start = Date.now(); breath.cue = 'Breathe in';
+    render();
+    const cycle = () => {
+      if (!breath.on) return;
+      const elapsed = Date.now() - breath.start;
+      if (elapsed >= 180000) { stopBreath(); toast('Three minutes done'); return; }
+      const inCycle = elapsed % 10000;
+      breath.cue = inCycle < 4000 ? 'Breathe in' : 'Breathe out';
+      const el = document.getElementById('breath-cue');
+      if (el && el.textContent !== breath.cue) el.textContent = breath.cue;
+      breath.timer = setTimeout(cycle, 250);
+    };
+    cycle();
+  }
+  function stopBreath() {
+    breath.on = false; clearTimeout(breath.timer); breath.cue = '';
+    if (tab === 'today') render();
+  }
+
+  /* ---------- events ---------- */
+  document.addEventListener('click', ev => {
+    const t = ev.target.closest('[data-action]');
+    if (!t || t.tagName === 'INPUT' || t.tagName === 'SELECT') return;
+    const a = t.dataset.action, id = t.dataset.id;
+    switch (a) {
+      case 'daily': {
+        if (!ready) return;
+        const k = todayKey();
+        const x = state.daily[k] = state.daily[k] || {};
+        x[t.dataset.key] = !x[t.dataset.key];
+        scheduleState(); render();
+        break;
+      }
+      case 'new-entry': openForm(t.dataset.type); break;
+      case 'log-practice': openForm('practice', id); break;
+      case 'set-type': {
+        form.type = t.dataset.type;
+        t.parentNode.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b === t)));
+        document.querySelectorAll('[data-only="practice"]').forEach(el => { el.hidden = form.type !== 'practice'; });
+        break;
+      }
+      case 'tag': {
+        const g = t.dataset.group, tag = t.dataset.tag;
+        const i = form[g].indexOf(tag);
+        if (i >= 0) form[g].splice(i, 1); else form[g].push(tag);
+        t.setAttribute('aria-pressed', String(i < 0));
+        break;
+      }
+      case 'cancel-entry': form = null; formError = ''; render(); break;
+      case 'toggle-entry': openEntry = openEntry === id ? null : id; confirmDel = null; render(); break;
+      case 'edit-entry': {
+        const e = allEntries().find(x => x.id === id);
+        if (e) { form = Object.assign(blankDraft(e.type), clone(e)); formError = ''; render(); focusForm(); }
+        break;
+      }
+      case 'ask-delete': confirmDel = id; render(); break;
+      case 'cancel-delete': confirmDel = null; render(); break;
+      case 'delete-entry': deleteEntry(id); break;
+      case 'toggle-rung': openRung = openRung === id ? null : id; confirmDel = null; render(); break;
+      case 'save-rating': {
+        const r = state.ladder.find(x => x.id === id);
+        const input = document.getElementById('rf-' + id);
+        if (r && input) {
+          const v = Number(input.value);
+          r.fear = v; if (r.firstFear == null) r.firstFear = v;
+          scheduleState(); render(); toast('Rating saved');
+        }
+        break;
+      }
+      case 'practised': {
+        const r = state.ladder.find(x => x.id === id);
+        const k = todayKey();
+        if (r && r.practised.indexOf(k) < 0) { r.practised.push(k); r.practised.sort(); }
+        (state.daily[k] = state.daily[k] || {}).prac = true;
+        scheduleState(); render(); toast('Practice noted for today');
+        break;
+      }
+      case 'delete-rung': {
+        state.ladder = state.ladder.filter(x => x.id !== id);
+        confirmDel = null; openRung = null; scheduleState(); render();
+        break;
+      }
+      case 'remove-crutch': state.crutches = state.crutches.filter(c => c.id !== id); scheduleState(); render(); break;
+      case 'copy-log': copyLog(); break;
+      case 'close-copy': copyFallback = null; render(); break;
+      case 'breathe': toggleBreath(); break;
+      case 'retry': retryWrites(); break;
+    }
+  });
+
+  document.addEventListener('change', ev => {
+    const t = ev.target;
+    const a = t.dataset && t.dataset.action;
+    if (a === 'check') {
+      if (t.checked) state.checks[t.dataset.id] = todayKey(); else delete state.checks[t.dataset.id];
+      scheduleState(); render();
+    } else if (a === 'crutch') {
+      const c = state.crutches.find(x => x.id === t.dataset.id);
+      if (c) { c.done = t.checked; scheduleState(); render(); }
+    } else if (a === 'rung-text') {
+      const r = state.ladder.find(x => x.id === t.dataset.id);
+      const v = t.value.trim();
+      if (r && v && v !== r.text) { r.text = v; scheduleState(); }
+    } else if (a === 'rung-fear') {
+      const r = state.ladder.find(x => x.id === t.dataset.id);
+      if (r) { const v = Number(t.value); r.fear = v; if (r.firstFear == null) r.firstFear = v; scheduleState(); render(); }
+    }
+  });
+
+  document.addEventListener('input', ev => {
+    const t = ev.target;
+    if (form && t.dataset && t.dataset.field) {
+      const f = t.dataset.field;
+      form[f] = (f === 'before' || f === 'after') ? Number(t.value) : t.value;
+      if (f === 'before' || f === 'after') { const o = document.getElementById('o-' + f); if (o) o.textContent = t.value; }
+    } else if (t.dataset && t.dataset.review) {
+      reviewDraft[t.dataset.review] = t.value;
+    } else if (t.dataset && t.dataset.action === 'rung-fear') {
+      const o = document.getElementById('rfo-' + t.dataset.id);
+      if (o) o.textContent = t.value;
+    }
+  });
+
+  document.addEventListener('submit', ev => {
+    const f = ev.target;
+    const kind = f.dataset && f.dataset.form;
+    if (!kind) return;
+    ev.preventDefault();
+    if (!ready) return;
+    if (kind === 'entry') saveEntry();
+    else if (kind === 'add-rung') {
+      const input = document.getElementById('new-rung');
+      const v = input.value.trim();
+      if (v) { const r = { id: newId(), text: v, fear: null, firstFear: null, practised: [] }; state.ladder.push(r); openRung = r.id; scheduleState(); render(); toast('Added. Rate it below.'); }
+    } else if (kind === 'add-crutch') {
+      const input = document.getElementById('new-crutch');
+      const v = input.value.trim();
+      if (v) { state.crutches.push({ id: newId(), text: v, done: false, custom: true }); scheduleState(); render(); }
+    } else if (kind === 'review') {
+      const has = REVIEW_QS.some(q => (reviewDraft[q[0]] || '').trim());
+      if (!has) { toast('Answer at least one question first.'); return; }
+      const r = { id: newId(), date: todayKey() };
+      REVIEW_QS.forEach(q => { r[q[0]] = (reviewDraft[q[0]] || '').trim(); });
+      state.reviews.push(r); reviewDraft = {};
+      scheduleState(); render(); toast('Review saved');
+    }
+  });
+
+  document.addEventListener('toggle', ev => {
+    const d = ev.target;
+    if (d && d.matches && d.matches('details.step')) {
+      const n = Number(d.dataset.step);
+      if (d.open) openSteps.add(n); else openSteps.delete(n);
+    }
+  }, true);
+
+  window.addEventListener('hashchange', () => {
+    const h = location.hash.replace('#', '');
+    tab = TABS.indexOf(h) >= 0 ? h : 'today';
+    confirmDel = null;
+    render();
+    if (pendingFocus && tab === 'log') { pendingFocus = false; focusForm(); }
+    else window.scrollTo(0, 0);
+  });
+
+  /* ---------- boot ---------- */
+  function start(saved) {
+    const h = location.hash.replace('#', '');
+    tab = TABS.indexOf(h) >= 0 ? h : 'today';
+    if (saved && typeof saved === 'object') {
+      if (saved.form) form = saved.form;
+      if (saved.reviewDraft) reviewDraft = saved.reviewDraft;
+    }
+    render();
+    connect();
+  }
+  const hot = window.claude && window.claude.hot;
+  if (hot && typeof hot.snapshot === 'function') {
+    try { hot.snapshot(() => ({ form: form, reviewDraft: reviewDraft })); } catch (e) { /* not available */ }
+  }
+  if (hot && typeof hot.ready === 'function') hot.ready(start);
+  else start((hot && hot.data) || {});
+})();
+</script>
+</body>
+</html>
