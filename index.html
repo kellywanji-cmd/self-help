@@ -98,8 +98,12 @@ main { padding-top: 8px; }
 .streak-top { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
 .big { font-family: var(--display); font-size: 56px; line-height: 1; font-variant-numeric: tabular-nums; }
 .dots { display: grid; grid-template-columns: repeat(14, 1fr); gap: 6px; list-style: none; padding: 0; margin: 16px 0 4px; }
-.dot { aspect-ratio: 1; border-radius: 50%; border: 2px solid var(--rail); }
+.dots li { display: block; }
+.dot { display: block; width: 100%; aspect-ratio: 1; border-radius: 50%; border: 2px solid var(--rail); background: transparent; padding: 0; cursor: pointer; }
 .dot.on { background: var(--good); border-color: var(--good); }
+.dot:disabled { cursor: not-allowed; }
+.seg-small { margin-top: 0; grid-template-columns: auto auto; }
+.seg-small button { padding: 7px 12px; font-size: 14px; }
 .dot.today { outline: 2px solid var(--accent); outline-offset: 2px; }
 .dots-legend { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); }
 .weekline { margin-top: 16px; }
@@ -446,6 +450,7 @@ details.step > summary::-webkit-details-marker { display: none; }
   let openEntry = null, openRung = null, confirmDel = null;
   let copyFallback = null;
   let reviewDraft = {};
+  let checkinDay = 'today'; // 'today' | 'yesterday'
   const openSteps = new Set();
   const breath = { on: false, start: 0, timer: null, cue: '' };
 
@@ -592,7 +597,10 @@ details.step > summary::-webkit-details-marker { display: none; }
 
   function renderToday() {
     const tk = todayKey();
-    const d = state.daily[tk] || {};
+    const yd = new Date(); yd.setHours(12, 0, 0, 0); yd.setDate(yd.getDate() - 1);
+    const yk = isoDate(yd);
+    const dayKey = checkinDay === 'yesterday' ? yk : tk;
+    const d = state.daily[dayKey] || {};
     const st = streak();
     const days = lastNDays(14);
     const counts = { caf: 0, move: 0, prac: 0 };
@@ -601,10 +609,16 @@ details.step > summary::-webkit-details-marker { display: none; }
     const elapsed = breath.on ? Date.now() - breath.start : 0;
     return '<section class="stack">' +
       '<div class="card">' +
-        '<div class="eyebrow">' + esc(fmtLong(new Date())) + '</div>' +
-        '<h2>Today</h2>' +
-        '<div class="toggles" role="group" aria-label="Today’s check-in">' +
-          CHECKIN.map(c => '<button type="button" class="toggle" data-action="daily" data-key="' + c[0] + '" aria-pressed="' + (d[c[0]] ? 'true' : 'false') + '"' + dis() + '><span class="tick" aria-hidden="true"></span>' + esc(c[1]) + '</button>').join('') +
+        '<div class="row-between">' +
+          '<div><div class="eyebrow">' + esc(fmtLong(parseLocal(dayKey))) + '</div>' +
+          '<h2>' + (checkinDay === 'yesterday' ? 'Yesterday' : 'Today') + '</h2></div>' +
+          '<div class="seg seg-small" role="group" aria-label="Which day to check in">' +
+            '<button type="button" data-action="checkin-day" data-day="today" aria-pressed="' + (checkinDay === 'today') + '">Today</button>' +
+            '<button type="button" data-action="checkin-day" data-day="yesterday" aria-pressed="' + (checkinDay === 'yesterday') + '">Yesterday</button>' +
+          '</div>' +
+        '</div>' +
+        '<div class="toggles" role="group" aria-label="Check-in for ' + esc(fmtLong(parseLocal(dayKey))) + '">' +
+          CHECKIN.map(c => '<button type="button" class="toggle" data-action="daily" data-day="' + dayKey + '" data-key="' + c[0] + '" aria-pressed="' + (d[c[0]] ? 'true' : 'false') + '"' + dis() + '><span class="tick" aria-hidden="true"></span>' + esc(c[1]) + '</button>').join('') +
         '</div>' +
       '</div>' +
       '<div class="card">' +
@@ -612,10 +626,11 @@ details.step > summary::-webkit-details-marker { display: none; }
         '<ol class="dots" aria-label="Alcohol-free days over the last 14 days">' +
           days.map(k => {
             const on = (state.daily[k] || {}).af;
-            return '<li class="dot' + (on ? ' on' : '') + (k === tk ? ' today' : '') + '"><span class="sr">' + esc(fmtDay(parseLocal(k))) + ': ' + (on ? 'alcohol-free' : 'not marked') + '</span></li>';
+            return '<li><button type="button" class="dot' + (on ? ' on' : '') + (k === tk ? ' today' : '') + '" data-action="dot" data-day="' + k + '" aria-pressed="' + (on ? 'true' : 'false') + '" aria-label="' + esc(fmtDay(parseLocal(k)) + (on ? ': alcohol-free' : ': not marked')) + '"' + dis() + '></button></li>';
           }).join('') +
         '</ol>' +
         '<div class="dots-legend" aria-hidden="true"><span>2 weeks ago</span><span>Today</span></div>' +
+        '<p class="small muted" style="margin-top:6px">Tap any day to mark it alcohol-free, or tap again to undo.</p>' +
         '<p class="weekline small muted">Last 7 days</p>' +
         '<div class="stats">' +
           [['prac', 'Ladder practice'], ['move', 'Exercise'], ['caf', 'Caffeine by 2pm']].map(s =>
@@ -995,10 +1010,20 @@ details.step > summary::-webkit-details-marker { display: none; }
     switch (a) {
       case 'daily': {
         if (!ready) return;
-        const k = todayKey();
+        const k = t.dataset.day || todayKey();
         const x = state.daily[k] = state.daily[k] || {};
         x[t.dataset.key] = !x[t.dataset.key];
         scheduleState(); render();
+        break;
+      }
+      case 'checkin-day': checkinDay = t.dataset.day === 'yesterday' ? 'yesterday' : 'today'; render(); break;
+      case 'dot': {
+        if (!ready) return;
+        const k = t.dataset.day;
+        const x = state.daily[k] = state.daily[k] || {};
+        x.af = !x.af;
+        scheduleState(); render();
+        toast((x.af ? 'Marked ' : 'Unmarked ') + fmtDay(parseLocal(k)) + (x.af ? ' as alcohol-free' : ''));
         break;
       }
       case 'new-entry': openForm(t.dataset.type); break;
